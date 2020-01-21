@@ -1,0 +1,8 @@
+server {
+    client_max_body_size 10M;
+
+    listen 80 default_server;
+    server_name localhost;
+
+    include /etc/nginx/conf.d/locations;
+}

@@ -1,0 +1,116 @@
+version: "3.4"
+
+x-logging:
+  &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+
+  qgisserver:
+    restart: always
+    image: gisquick/qgis-server:3.4
+    volumes:
+      - publish:/publish/
+    expose:
+      - 90
+
+  postgres:
+    restart: always
+    image: postgres:10-alpine
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    env_file:
+      - postgres.env
+    expose:
+      - 5432
+
+  django:
+    restart: always
+    image: gisquick/django
+    volumes:
+      - db-data:/var/www/gisquick/data/
+      - publish:/publish/
+      - assets:/assets/
+      - media:/var/www/gisquick/media/
+      - ./django/settings.custom/:/var/www/gisquick/djproject/custom/:ro
+    environment:
+      - GUNICORN_WORKERS=2
+      - GUNICORN_ERRORLOG=-
+      - GUNICORN_ACCESSLOG=-
+      - DJANGO_STATIC_URL=/django/static/
+      - DJANGO_STATIC_ROOT=/assets/django/static/
+      - DJANGO_MEDIA_URL=/media/
+      - DJANGO_MEDIA_ROOT=/var/www/gisquick/media/
+      - DJANGO_LANGUAGE_CODE=en-us
+      - DJANGO_SECRET_KEY=${SECRET_KEY}
+    env_file:
+      - django.env
+    expose:
+      - 8000
+    logging: *default-logging
+
+  go:
+    restart: always
+    image: gisquick/settings
+    volumes:
+      - publish:/publish/
+      - media:/var/www/media/
+    environment:
+      - PROJECTS_ROOT=/publish
+      - MAP_CACHE_ROOT=/var/www/media/cache
+      - SERVER_URL=http://django:8000
+      - MAPSERVER_URL=http://qgisserver:90/cgi-bin/qgis_mapserv.fcgi
+      - MAX_FILE_UPLOAD=50M
+      - MAX_PROJECT_SIZE=150M
+    expose:
+      - 8001
+    logging: *default-logging
+
+  nginx:
+    restart: always
+    image: nginx
+    volumes:
+      - assets:/var/www/html/
+      - media:/var/www/media/
+      - certbot:/var/www/certbot/
+      - letsencrypt:/etc/letsencrypt/
+      - ./nginx/conf/:/etc/nginx/conf.d/
+      - ./nginx/error/:/var/www/error/
+    ports:
+      - 80:80
+      - 443:443
+    logging: *default-logging
+
+  web-map:
+    image: gisquick/web-map
+    volumes:
+      - assets:/assets/
+    command: "copy-assets /var/www /assets/map"
+
+  web-user:
+    image: gisquick/web-user
+    volumes:
+      - assets:/assets/
+    command: "copy-assets /var/www /assets/user"
+
+  web-accounts:
+    image: gisquick/web-accounts
+    volumes:
+      - assets:/assets/
+    command: "copy-assets /var/www /assets/accounts"
+
+volumes:
+  publish:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/data/publish/
+      o: bind
+  db-data:
+  assets:
+  media:
+  certbot:
+  letsencrypt:
