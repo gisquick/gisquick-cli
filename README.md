@@ -80,6 +80,18 @@ docker-compose up
 
 See also [Local deployment](#local-deployment) for information about initial configuration and DB initialization.
 
+This will run "production" server on the port 80 (http://localhost/)
+
+Now you can switch to gisquick/clients/gisquick-web/ and start development server
+
+```
+cd gisquick/clients/gisquick-web/
+npm install # if you did not already
+npm run serve
+```
+
+Will start development server on the port 8080  http://localhost:8080
+
 
 ## Go development deployment
 
