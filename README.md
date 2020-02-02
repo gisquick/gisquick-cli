@@ -80,18 +80,6 @@ docker-compose up
 
 See also [Local deployment](#local-deployment) for information about initial configuration and DB initialization.
 
-This will run "production" server on the port 80 (http://localhost/)
-
-Now you can switch to gisquick/clients/gisquick-web/ and start development server
-
-```
-cd gisquick/clients/gisquick-web/
-npm install # if you did not already
-npm run serve
-```
-
-Will start development server on the port 8080  http://localhost:8080
-
 
 ## Go development deployment
 
@@ -136,7 +124,7 @@ cd gisquick
 Create and set docker compose file. Template for letsencrypt deployment will be suitable also for openssl self-signed certificate.
 ```
 export SERVER_NAME=localhost
-gisquick-cli compose --profile=letsencrypt
+gisquick-cli compose --profile=letsencrypt --server-name=$SERVER_NAME
 gisquick-cli use docker-compose.letsencrypt.yml
 ```
 
@@ -149,8 +137,10 @@ openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
     -out ssl/fullchain.pem \
     -subj "/C=CZ/ST=State/L=City/O=Gisquick/OU=IT Department/CN=$SERVER_NAME"
 
-docker-compose run --rm -v "$(pwd)/ssl":/tmp/ssl nginx bash -c 'mkdir -p /etc/letsencrypt/live/ && cp -r /tmp/ssl /etc/letsencrypt/live/$SERVER_NAME'
+docker-compose run --rm -v $(pwd)/ssl:/tmp/ssl -e SERVER_NAME=$SERVER_NAME nginx bash -c 'mkdir -p /etc/letsencrypt/live/$SERVER_NAME && cp /tmp/ssl/* /etc/letsencrypt/live/$SERVER_NAME/'
 ```
+
+It's also necessary to delete or comment configuration of `ssl_trusted_certificate` parameter in `nginx/conf.letsencrypt/ssl-parameters` file for this kind of certificate.
 
 Before first start of Gisquick, adjust its [configuration](#startup-configuration)
 

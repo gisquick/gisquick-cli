@@ -222,14 +222,11 @@ def nginx_local(config, context):
 
 
 def letsencrypt_profile(config, context):
-    # maybe try os.environ.get("SERVER_NAME") ?
-    # context["server_name"] = "gisquick.org"
     if not context.get("server_name"):
         context["server_name"] = click.prompt("\nEnter server name")
 
     nginx_common(config, context)
     exclude = ["conf.local"]
-    templates = ["conf.http", "conf.letsencrypt"]
     src_dir = os.path.join(context["template_dir"], "nginx", "conf")
     dest_dir = os.path.join(context["output_dir"], "nginx", "conf.letsencrypt")
     os.makedirs(dest_dir, exist_ok=True)
@@ -238,13 +235,10 @@ def letsencrypt_profile(config, context):
             continue
         src = os.path.join(src_dir, filename)
         dest = os.path.join(dest_dir, filename)
-        if filename not in templates:
-            shutil.copy(src, dest)
-        else:
-            with open(src) as f:
-                conf = f.read().replace("${NGINX_HOST}", context["server_name"])
-                with open(dest, "w") as outfile:
-                    outfile.write(conf)
+        with open(src) as f:
+            conf = f.read().replace("${NGINX_HOST}", context["server_name"])
+            with open(dest, "w") as outfile:
+                outfile.write(conf)
 
     create_symlink("conf.letsencrypt", os.path.join(dest_dir, "default.conf"))
     VolumesList(config["services"]["nginx"]["volumes"])\

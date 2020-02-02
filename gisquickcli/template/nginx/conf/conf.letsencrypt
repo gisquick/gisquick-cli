@@ -12,8 +12,6 @@ server {
     listen 443 ssl default_server;
     server_name ${NGINX_HOST};
 
-    ssl_certificate /etc/letsencrypt/live/${NGINX_HOST}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${NGINX_HOST}/privkey.pem;
     include /etc/nginx/conf.d/ssl-parameters;
 
     include /etc/nginx/conf.d/locations;
