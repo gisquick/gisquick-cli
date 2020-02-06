@@ -244,6 +244,8 @@ def letsencrypt_profile(config, context):
     VolumesList(config["services"]["nginx"]["volumes"])\
         .replace("./nginx/conf/", "./nginx/conf.letsencrypt/:/etc/nginx/conf.d/")
 
+    shutil.copy(os.path.join(context["template_dir"], "certbot.yaml"), os.path.join(context["output_dir"], "certbot.yaml"))
+
 
 def no_accounts(config, context):
     services = config["services"]

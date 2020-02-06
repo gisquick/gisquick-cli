@@ -4,8 +4,13 @@
 Set of commands to simplify and speed up setup of new deployment(s).
 
 ### Installation:
+
 ```
-pip3 install gisquick-cli
+pip3 install git+https://github.com/gislab-npo/gisquick-cli
+```
+or without `git` already installed
+```
+pip3 install https://github.com/gislab-npo/gisquick-cli/archive/master.zip
 ```
 
 ### Commands
@@ -151,6 +156,60 @@ docker-compose up
 After creating a new deployment, you will have to [initialize DB](#db-initialization)
 
 Gisquick will be running on: [https://localhost](https://localhost)
+
+
+## Server deployment with Let's Encrypt certificate
+
+If you already doesn't have one, create a new deployment environment
+```
+gisquick-cli create gisquick
+cd gisquick
+```
+
+Create and set docker compose file.
+```
+export SERVER_NAME=example.com
+gisquick-cli compose --profile=letsencrypt --server-name=$SERVER_NAME
+gisquick-cli use docker-compose.letsencrypt.yml
+```
+
+Before first start of Gisquick, adjust its [configuration](#startup-configuration)
+
+Temporary switch to configuration with http protocol only
+```
+rm nginx/conf.letsencrypt/default.conf
+ln -s conf.http nginx/conf.letsencrypt/default.conf
+```
+
+Start Gisquick
+```
+docker-compose up -d
+```
+
+Create Let's Encrypt certificate
+```
+docker-compose -f certbot.yml run --rm certbot certonly --agree-tos -a webroot \
+    --webroot-path /var/www/certbot/ \
+    --email admin@gisquick.org \
+    -d $SERVER_NAME
+```
+
+Switch to normal configuration and restart nginx server
+```
+rm nginx/conf.letsencrypt/default.conf
+ln -s conf.letsencrypt nginx/conf.letsencrypt/default.conf
+docker-compose restart nginx
+```
+
+Now should be Gisquick working over https protocol. Before you start using it, you will have to [initialize DB](#db-initialization) first.
+
+Renew certificate before it will expire:
+```
+docker-compose -f certbot.yml run --rm certbot renew
+docker-compose kill -s HUP nginx
+```
+
+Tip: use `--dry-run` option in certbot commands for testing
 
 
 ## Startup configuration
