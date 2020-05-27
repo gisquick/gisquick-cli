@@ -257,3 +257,25 @@ Update web app
 docker-compose up -d web-map
 ```
 Note: use ```--force-recreate``` flag to update assets even if image didn't change
+
+## Notes
+
+### Define upload & project limits
+
+Upload file size limit is defined in `docker-compose.yml`:
+
+```
+MAX_FILE_UPLOAD=50M
+```
+
+Project size limit is defined by two files: `docker-compose.yml`
+
+```
+MAX_PROJECT_SIZE=150M
+```
+
+and `nginx/conf.letsencrypt/locations`
+
+```
+client_max_body_size 150M;
+```
