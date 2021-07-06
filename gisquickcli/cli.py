@@ -164,10 +164,9 @@ def go_dev_config(config, context):
     services = config["services"]
     go_conf = services["go"]
     go_conf["image"] = "gisquick/settings-dev"
-    go_conf["volumes"].extend([
-        CommentedMap(type='bind', source='${GISQUICK_SETTINGS_REPO}/go/src', target='/go/src'),
-        CommentedMap(type='bind', source='${GISQUICK_SETTINGS_REPO}/go/cmd', target='/go/cmd')
-    ])
+    go_conf["volumes"].append(
+        CommentedMap(type='bind', source='${GISQUICK_SETTINGS_REPO}/go', target='/go'),
+    )
 
 
 def sqlite_config(config, context):
