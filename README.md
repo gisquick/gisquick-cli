@@ -6,11 +6,11 @@ Set of commands to simplify and speed up setup of new deployment(s).
 ### Installation:
 
 ```
-pip3 install git+https://github.com/gislab-npo/gisquick-cli
+pip3 install git+https://github.com/gisquick/gisquick-cli
 ```
 or without `git` already installed
 ```
-pip3 install https://github.com/gislab-npo/gisquick-cli/archive/master.zip
+pip3 install https://github.com/gisquick/gisquick-cli/archive/master.zip
 ```
 
 ### Commands
@@ -74,7 +74,7 @@ gisquick-cli use docker-compose.django-dev.yml
 
 Fetch repository with source files
 ```
-git clone https://github.com/gislab-npo/gisquick.git
+git clone https://github.com/gisquick/gisquick.git
 ```
 
 Set path to django server source repository - ```GISQUICK_DJANGO_REPO``` in ```.env``` file
@@ -96,7 +96,7 @@ gisquick-cli use docker-compose.go-dev.yml
 
 Fetch repository with source files
 ```
-git clone https://github.com/gislab-npo/gisquick-settings.git
+git clone https://github.com/gisquick/gisquick-settings.git
 ```
 
 Build image required for development
