@@ -13,6 +13,11 @@ or without `git` already installed
 pip3 install https://github.com/gisquick/gisquick-cli/archive/master.zip
 ```
 
+For development
+```
+python3 -m pip install -e <path-to-gisquick-cli>
+```
+
 ### Commands
 
 Create a new empty deployment environment. One environment can contain several docker compose files (different variations of deployment), which will share all global volumes (publish, assets, media, db, ...)
@@ -257,6 +262,11 @@ Update web app
 docker-compose up -d web-map
 ```
 Note: use ```--force-recreate``` flag to update assets even if image didn't change
+
+Display logs from qgis server
+```
+docker-compose exec qgisserver tail -f /var/log/lighttpd/qgis-mapserver.log
+```
 
 ## Notes
 
