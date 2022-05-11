@@ -290,7 +290,7 @@ and `nginx/conf.letsencrypt/locations`
 client_max_body_size 150M;
 ```
 
-### Change user password from shell
+### Create/Change user password from shell
 
 Enter django container.
 
@@ -303,6 +303,13 @@ Execute statements below.
 ```py
 from django.contrib.auth import get_user_model
 User = get_user_model()
+
+# create a new user
+u = User.objects.create_user(username='foo', password='foo')
+u.is_staff=True
+u.save() 
+    
+# change password    
 u = User.objects.get(username='myuser')
 u.set_password('mypassword')
 u.save()
