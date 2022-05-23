@@ -10,6 +10,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'click',
+        'python-dotenv',
         'ruamel.yaml==0.16.5'
     ],
     url='https://github.com/gisquick-npo/gisquick-cli',

@@ -1,0 +1,10 @@
+[general]
+name=Gisquick server reload plugin
+qgisMinimumVersion=3.0
+description=API for reloading projects (clearing cache)
+version=version 1.0
+server=True
+
+changelog=
+
+about=API for reloading projects

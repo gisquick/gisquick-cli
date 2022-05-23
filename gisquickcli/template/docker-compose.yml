@@ -1,88 +1,78 @@
 version: "2.3"
 
-x-logging:
-  &default-logging
+x-logging: &default-logging
   driver: json-file
   options:
     max-size: "10m"
     max-file: "5"
+    #tag: "{{.ImageName}}/{{.Name}}/{{.ID}}"
+    tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
 
 services:
 
-  qgisserver:
+  qgis-server:
     restart: always
-    image: gisquick/qgis-server:3.4
+    image: gisquick/qgis-server:3.16-debian
+    mem_limit: 3000M
     volumes:
       - publish:/publish/
+      - ./qgis/plugins:/usr/lib/qgis/python/plugins
+    environment:
+      - QGIS_SERVER_IGNORE_BAD_LAYERS=1
+      - QGIS_SERVER_LOG_LEVEL=0
+      - QGIS_PLUGINPATH=/usr/lib/qgis/python/plugins/
+      # - QGIS_SERVER_PARALLEL_RENDERING=true
     expose:
-      - 90
+      - 5555
+    logging: *default-logging
 
   postgres:
     restart: always
-    image: postgres:10-alpine
+    image: postgres:12-alpine
     volumes:
       - db-data:/var/lib/postgresql/data
     env_file:
       - postgres.env
-    expose:
-      - 5432
-
-  django:
-    restart: always
-    image: gisquick/django
-    volumes:
-      - db-data:/var/www/gisquick/data/
-      - publish:/publish/
-      - assets:/assets/
-      - media:/var/www/gisquick/media/
-      - ./django/settings.custom/:/var/www/gisquick/djproject/custom/:ro
-    environment:
-      - GUNICORN_WORKERS=2
-      - GUNICORN_ERRORLOG=-
-      - GUNICORN_ACCESSLOG=-
-      - DJANGO_STATIC_URL=/django/static/
-      - DJANGO_STATIC_ROOT=/assets/django/static/
-      - DJANGO_MEDIA_URL=/media/
-      - DJANGO_MEDIA_ROOT=/var/www/gisquick/media/
-      - DJANGO_LANGUAGE_CODE=en-us
-      - DJANGO_SECRET_KEY=${SECRET_KEY}
-    env_file:
-      - django.env
-    expose:
-      - 8000
-    logging: *default-logging
-
-  go:
-    restart: always
-    image: gisquick/settings
-    volumes:
-      - publish:/publish/
-      - media:/var/www/media/
-    environment:
-      - PROJECTS_ROOT=/publish
-      - MAP_CACHE_ROOT=/var/www/media/cache
-      - SERVER_URL=http://django:8000
-      - MAPSERVER_URL=http://qgisserver:90/cgi-bin/qgis_mapserv.fcgi
-      - MAX_FILE_UPLOAD=50M
-      - MAX_PROJECT_SIZE=150M
-    expose:
-      - 8001
-    logging: *default-logging
-
-  nginx:
-    restart: always
-    image: nginx
-    volumes:
-      - assets:/var/www/html/
-      - media:/var/www/media/
-      - certbot:/var/www/certbot/
-      - letsencrypt:/etc/letsencrypt/
-      - ./nginx/conf/:/etc/nginx/conf.d/
-      - ./nginx/error/:/var/www/error/
     ports:
-      - 80:80
-      - 443:443
+      - 5432
     logging: *default-logging
+
+  redis:
+    restart: always
+    image: redis
+    ports:
+      - "6379"
+    volumes:
+      - redisdata:/var/run/redis
+    command: redis-server --port 6379
+    logging: *default-logging
+
+  app:
+    restart: always
+    image: gisquick/server
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - publish:/publish/
+      - media:/var/www/media/
+    environment:
+      - GISQUICK_PROJECTS_ROOT=/publish
+      - GISQUICK_MAP_CACHE_ROOT=/var/www/media/cache
+      - GISQUICK_MAPSERVER_URL=http://caddy:10080/qgis-server
+      - GISQUICK_MAX_PROJECT_SIZE=250M
+      - GISQUICK_LANGUAGE=en-us
+      - GISQUICK_SIGNUP_API=False
+      - REDIS_ADDR=redis:6379
+      - AUTH_SESSION_EXPIRATION=96h
+      - AUTH_SECRET_KEY=${SECRET_KEY}
+      - WEB_SITE_URL=${SERVER_URL}
+    env_file:
+      - postgres.env
+    ports:
+      - 3000
+    logging: *default-logging
+
 
   web-map:
     image: gisquick/web-map
@@ -91,7 +81,7 @@ services:
     command: "copy-assets /var/www /assets/map"
 
   web-user:
-    image: gisquick/web-user
+    image: gisquick/web-settings
     volumes:
       - assets:/assets/
     command: "copy-assets /var/www /assets/user"
@@ -102,6 +92,128 @@ services:
       - assets:/assets/
     command: "copy-assets /var/www /assets/accounts"
 
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+      - assets:/var/www/html/
+      - media:/var/www/media/
+    ports:
+      - 2019
+      - 10080
+    depends_on:
+      - app
+    logging: *default-logging
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - 9100:9100
+    logging: *default-logging
+
+
+  cadvisor:
+    image: google/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - 8081:8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /sys/fs/cgroup:/cgroup:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - '--housekeeping_interval=10s'
+      - '--docker_only=true'
+    logging: *default-logging
+
+
+  prometheus:
+    image: prom/prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090
+    logging: *default-logging
+
+  loki:
+    image: grafana/loki:2.4.1
+    restart: always
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/config.yaml
+      - loki:/loki
+    command: -config.file=/etc/loki/config.yaml
+    ports:
+      - 3100
+    logging: *default-logging
+
+  promtail:
+    image: grafana/promtail:2.4.1
+    restart: always
+    volumes:
+      # - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail:/etc/promtail-config/
+    command: -config.file=/etc/promtail-config/config.yml
+    logging: *default-logging
+
+
+  grafana:
+    image: grafana/grafana
+    restart: unless-stopped
+    volumes:
+      - grafana-data:/var/lib/grafana
+    ports:
+      - 3000
+    environment:
+      - GF_SERVER_ROOT_URL=${SERVER_URL}/admin/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    logging: *default-logging
+    # logging:
+    #   driver: loki
+    #   options:
+    #     loki-url: http://loki:3100/loki/api/v1/push
+    #     loki-timeout: "2s"
+    #     loki-max-backoff: "1800ms"
+    #     loki-retries: "3"
+    #     mode: "non-blocking"
+    #     loki-pipeline-stages: |
+    #       - regex:
+    #           expression: '(level|lvl|severity)=(?P<level>\w+)'
+    #       - labels:
+    #           level:
+
 volumes:
   publish:
     driver: local
@@ -110,7 +222,11 @@ volumes:
       device: ${PWD}/data/publish/
       o: bind
   db-data:
+  redisdata:
   assets:
   media:
-  certbot:
-  letsencrypt:
+  prometheus_data:
+  grafana-data:
+  loki:
+  caddy_data:
+  caddy_config:

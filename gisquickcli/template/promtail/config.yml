@@ -1,0 +1,84 @@
+# server:
+#   http_listen_address: 0.0.0.0
+#   http_listen_port: 9080
+
+server:
+  disable: true
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+- job_name: system
+  static_configs:
+  - targets:
+      - localhost
+    labels:
+      job: varlogs
+      __path__: /var/log/*log
+
+- job_name: containers
+  static_configs:
+  - targets:
+      - localhost
+    labels:
+      job: containerlogs
+      __path__: /var/lib/docker/containers/*/*log
+
+  pipeline_stages:
+  # - regex:
+  #     expression: "^(?P<entry>.*)$"
+  # - template:
+  #     source: entry
+  #     template: '{{ Replace .Value "\n" "\x" 0 }}'
+  # - template:
+  #     source: entry
+  #     template: '{{ Replace .Value "\\t" "\t" -1 }}'
+  # - output:
+  #     source: entry
+
+  - json:
+      expressions:
+        output: log
+        stream: stream
+        attrs:
+  - json:
+      expressions:
+        tag:
+      source: attrs
+
+  - regex:
+      expression: (?P<image_name>(?:[^|]*[^|])).(?P<container_name>(?:[^|]*[^|])).(?P<image_id>(?:[^|]*[^|])).(?P<container_id>(?:[^|]*[^|]))
+      source: tag
+  - timestamp:
+      format: RFC3339Nano
+      source: time
+  - labels:
+      tag:
+      stream:
+      image_name:
+      container_name:
+      image_id:
+      container_id:
+  - output:
+      source: output
+
+  # - match:
+  #     selector: '{image_name="nginx",stream="stdout"}'
+  #     stages:
+  #     - regex:
+  #         expression: '^(?P<remote_addr>[\w\.]+) - (?P<remote_user>[^ ]*) \[(?P<time_local>.*)\] "(?P<method>[^ ]*) (?P<request>[^ ]*) (?P<protocol>[^ ]*)" (?P<status>[\d]+) (?P<body_bytes_sent>[\d]+) "(?P<http_referer>[^"]*)" "(?P<http_user_agent>[^"]*)"?'
+  #     - labels:
+  #         #remote_addr:
+  #         #remote_user:
+  #         #time_local:
+  #         method:
+  #         #request:
+  #         #protocol:
+  #         status:
+  #         #body_bytes_sent:
+  #         #http_referer:
+  #         #http_user_agent:

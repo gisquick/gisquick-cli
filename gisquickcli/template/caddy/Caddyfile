@@ -1,0 +1,78 @@
+{
+  debug
+  admin 0.0.0.0:2019
+}
+
+(proxy_headers) {
+  header_up Host {host}
+  header_up X-Real-IP {remote_host}
+  header_up X-Forwarded-For {remote_host}
+}
+
+${SERVER_NAME} {
+  redir /user /user/
+  redir /admin/grafana /admin/grafana/
+
+  route /admin/grafana/* {
+    reverse_proxy grafana:3000
+  }
+
+  @app path /api/* /ws/*
+
+  encode @app gzip {
+    match {
+      header Content-Type text/*
+      header Content-Type application/json*
+      header Content-Type application/vnd.geo+json*
+      header Content-Type application/javascript*
+      header Content-Type image/svg+xml*
+    }
+  }
+
+  reverse_proxy @app app:3000 {
+    import proxy_headers
+    transport http {
+      dial_timeout 15s
+    }
+  }
+
+
+  root /map/static/* /var/www/html/
+  root / /var/www/html/map/  # matcher token: /index.html
+
+  #root /user/static/* /var/www/html/
+
+  route /user/static/* {
+    root * /var/www/html/
+    file_server {
+      precompressed gzip
+    }
+  }
+
+  route /user/* {
+    rewrite * /user/index.html
+    root * /var/www/html/
+    file_server {
+      precompressed gzip
+    }
+  }
+  file_server {
+    precompressed gzip
+  }
+}
+
+:10080 {
+  log {
+    format json
+  }
+  @qgis path /qgis-server /qgis-server/*
+
+  reverse_proxy @qgis qgis-server:5555 {
+    transport fastcgi {
+      root /
+      dial_timeout 15s
+      read_timeout 30s
+      write_timeout 30s
+    }
+  }
+}

@@ -5,6 +5,7 @@ import sys
 import click
 import shutil
 import secrets
+from urllib.parse import urlsplit, quote
 from ruamel.yaml import YAML
 from ruamel.yaml.tokens import CommentToken
 from ruamel.yaml.error import CommentMark
@@ -53,6 +54,7 @@ def add_ending_newline(obj):
         obj.ca.items[last_key] = [None, None, ct, None]
 
 
+# def get_random_string(length=50, chars="!@#%^&*(-_=+)"):
 def get_random_string(length=50, chars="abcdefghijklmnopqrstuvwxyz0123456789!@#%^&*(-_=+)"):
     return "".join(secrets.choice(chars) for i in range(length))
 
@@ -122,135 +124,78 @@ class EnvVars(KeyedList):
         super().__init__(obj, separator="=")
 
 
+def subst_file(path, data):
+    with open(path) as f:
+        fdata = f.read()
+        for param, val in data.items():
+            fdata = fdata.replace("${%s}" % param, "%s" % val)
+    with open(path, "w") as outfile:
+        outfile.write(fdata)
+
+
 ##### Configs #####
 
-def local_profile(config, context):
+def app_server_config(config, context):
+    EnvVars(config["services"]["app"]["environment"])\
+        .update("GISQUICK_SIGNUP_API=%s" % context["accounts"])
+        # .update("WEB_SITE_URL=%s" % context["server_url"])
+
+
+def server_dev_config(config, context):
     services = config["services"]
-
-    def map_ports(service):
-        ports = service.pop("expose")
-        service["ports"] = ["{0}:{0}".format(port) for port in ports]
-
-    map_ports(services["postgres"])
-    map_ports(services["qgisserver"])
-    map_ports(services["django"])
-    map_ports(services["go"])
-
-    services["nginx"]["ports"] = ["80:80"]
-
-
-def django_dev_config(config, context):
-    services = config["services"]
-
-    django_conf = services["django"]
-    VolumesList(django_conf["volumes"])\
-        .remove("assets")\
-        .append(CommentedMap(
-            type='bind',
-            source='${GISQUICK_DJANGO_REPO}/server/webgis',
-            target='/gisquick/server/webgis'
-        ))
-
-    EnvVars(django_conf["environment"]).update(
-        "DJANGO_STATIC_ROOT=/var/www/gisquick/static/",
-        "DJANGO_DEBUG=True",
-        "PYTHONDONTWRITEBYTECODE=1",
-        "PYTHONUNBUFFERED=1"
-    )
-    django_conf["command"] = "django-admin runserver 0.0.0.0:8000"
-
-
-def go_dev_config(config, context):
-    services = config["services"]
-    go_conf = services["go"]
-    go_conf["image"] = "gisquick/settings-dev"
+    go_conf = services["app"]
+    go_conf["image"] = "gisquick/server-dev"
     go_conf["volumes"].append(
-        CommentedMap(type='bind', source='${GISQUICK_SETTINGS_REPO}/go', target='/go'),
+        CommentedMap(type='bind', source=context["server_src"], target='/go/server'),
+        # CommentedMap(type='bind', source='${GISQUICK_SERVER_REPO}', target='/go/server'),
     )
 
 
-def sqlite_config(config, context):
-    services = config["services"]
-    services.pop("postgres")
-    EnvVars(services["django"]["environment"])\
-        .update("GISQUICK_SQLITE_DB=/var/www/gisquick/data/gisquick.sqlite3")
+def caddy_config(config, context):
+    serv_url = urlsplit(context["server_url"])
+    server_name = serv_url.netloc
+    if serv_url.hostname == "localhost":
+        server_name = ":%s" % (serv_url.port or 80)
+    if serv_url.port:
+        ports = [port]
+    elif serv_url.scheme == "http":
+        ports = [80]
+    else:
+        ports = [80, 443]
 
+    if serv_url.scheme == "https" and serv_url.port:
+        click.secho("When using non-standard port with https scheme, you will need to configure ssl certificates", fg="orange")
 
-def postgres_config(config, context):
-    services = config["services"]
-    services["django"]["env_file"].append("postgres.env")
-    create_env_file(os.path.join(context["output_dir"], "postgres.env"), {
-        "POSTGRES_DB": "gisquick",
-        "POSTGRES_USER": "postgres",
-        "POSTGRES_PASSWORD": get_random_string(8)
-    })
+    service = config["services"]["caddy"]
+    for port in ports:
+        service["ports"].append("{0}:{0}".format(port))
 
-
-def nginx_common(config, context):
-    src = os.path.join(context["template_dir"], "nginx", "error")
-    dest = os.path.join(context["output_dir"], "nginx", "error")
+    src = os.path.join(context["template_dir"], "caddy")
+    dest = os.path.join(context["output_dir"], "caddy")
     if not os.path.exists(dest):
         shutil.copytree(src, dest)
+    subst_file(os.path.join(dest, "Caddyfile"), {"SERVER_NAME": server_name})
 
 
-def nginx_local(config, context):
-    nginx_common(config, context)
+def prometheus_config(config, context):
+    if not context["node_exporter"] or not context["cadvisor"]:
+        conf_filename = os.path.join(context["output_dir"], "prometheus", "prometheus.yml")
+        with open(conf_filename) as file:
+            config = yaml.load(file)
+            scrape_configs = config["scrape_configs"]
+            def job_index(name):
+                for i, job in enumerate(scrape_configs):
+                    if job["job_name"] == name:
+                        return i
+                return -1
 
-    services = config["services"]
-    nginx_conf = services["nginx"]
-    VolumesList(nginx_conf["volumes"])\
-        .remove("certbot")\
-        .remove("letsencrypt")\
-        .replace("./nginx/conf/", "./nginx/conf.local/:/etc/nginx/conf.d/")
+            if not context["node_exporter"]:
+                scrape_configs.pop(job_index("node"))
+            if not context["cadvisor"]:
+                scrape_configs.pop(job_index("cadvisor"))
 
-    nginx_conf["ports"] = ["80:80"]
-
-    volumes = config["volumes"]
-    volumes.pop("certbot")
-    volumes.pop("letsencrypt")
-
-    src_dir = os.path.join(context["template_dir"], "nginx", "conf")
-    dest_dir = os.path.join(context["output_dir"], "nginx", "conf.local")
-    files = ["conf.local", "locations", "proxy-parameters"]
-    os.makedirs(dest_dir, exist_ok=True)
-    for filename in files:
-        src = os.path.join(src_dir, filename)
-        dest = os.path.join(dest_dir, filename)
-        shutil.copy(src, dest)
-    os.rename(os.path.join(dest_dir, "conf.local"), os.path.join(dest_dir, "default.conf"))
-
-
-def letsencrypt_profile(config, context):
-    if not context.get("server_name"):
-        context["server_name"] = click.prompt("\nEnter server name")
-
-    nginx_common(config, context)
-    exclude = ["conf.local"]
-    src_dir = os.path.join(context["template_dir"], "nginx", "conf")
-    dest_dir = os.path.join(context["output_dir"], "nginx", "conf.letsencrypt")
-    os.makedirs(dest_dir, exist_ok=True)
-    for filename in os.listdir(src_dir):
-        if filename in exclude:
-            continue
-        src = os.path.join(src_dir, filename)
-        dest = os.path.join(dest_dir, filename)
-        with open(src) as f:
-            conf = f.read().replace("${NGINX_HOST}", context["server_name"])
-            with open(dest, "w") as outfile:
-                outfile.write(conf)
-
-    create_symlink("conf.letsencrypt", os.path.join(dest_dir, "default.conf"))
-    VolumesList(config["services"]["nginx"]["volumes"])\
-        .replace("./nginx/conf/", "./nginx/conf.letsencrypt/:/etc/nginx/conf.d/")
-
-    shutil.copy(os.path.join(context["template_dir"], "certbot.yml"), os.path.join(context["output_dir"], "certbot.yml"))
-
-
-def no_accounts(config, context):
-    services = config["services"]
-    services.pop("web-accounts")
-    EnvVars(services["django"]["environment"])\
-        .update("GISQUICK_ACCOUNTS_ENABLED=False")
+        with open(conf_filename, "w") as file:
+            yaml.dump(config, file)
 
 
 @click.group()
@@ -259,46 +204,79 @@ def cli():
     pass
 
 
+def validate_server_url(ctx, param, value):
+    try:
+        url = urlsplit(value)
+        if url.scheme != "http" and url.scheme != "https":
+            raise ValueError(value)
+    except ValueError as e:
+            click.echo('Invalid URL: {}'.format(e))
+            value = click.prompt(param.prompt)
+            return validate_server_url(ctx, param, value)
+    return value
+
+
+def check_folder_exists(ctx, param, value):
+    if os.path.exists(value):
+        fatal("Directory already exists: %s" % os.path.abspath(value))
+    return value
+
+
 @cli.command()
-@click.argument("name")
-def create(name):
+@click.argument("name", callback=check_folder_exists)
+@click.option('--server-url', prompt=True, default="http://localhost", help="Server URL.", callback=validate_server_url)
+@click.option('--publish-dir', prompt=True, default=os.path.join("data", "publish"), help="Publish directory.")
+@click.option('--cadvisor', is_flag=True, prompt=True, help="Setup Cadvisor service.")
+@click.option('--node-exporter', is_flag=True, prompt=True, help="Setup Node Exporter service.")
+@click.option('--accounts', is_flag=True, default=False, prompt=True, help="Include web app for users registration.")
+@click.option('--dev-server', is_flag=True, default=False, help="Setup application server for development.")
+def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev_server):
     """Create a new deployment environment"""
-    click.secho("Creating a new deployment environment in directory: %s" % name, fg="cyan")
-
-    if os.path.exists(name):
-        fatal("Directory already exists: %s" % os.path.abspath(name))
-    os.mkdir(name)
-
-    # with open(os.path.join(name, ".gitignore"), "w") as f:
-    #     f.write("# Ignore everything in this directory\n*")
-
-    create_env_file(os.path.join(name, ".env"), {
-        "SECRET_KEY": get_random_string()
-    })
-    click.secho('Created ".env" file for global settings', fg="yellow")
-    create_env_file(os.path.join(name, "django.env"), {})
-    click.secho('Created "django.env" file', fg="yellow")
-
-    os.makedirs(os.path.join(name, "data", "publish"))
-    click.secho('Created "data/publish" folder for published projects', fg="yellow")
-
-
-@cli.command()
-@click.option("--name", "compose_name", help="Compose name. Profile name will be used as default.")
-@click.option("--profile", type=click.Choice(["local", "letsencrypt"]), default="local")
-@click.option("--db", type=click.Choice(["sqlite", "postgres"]), default="sqlite")
-@click.option("--django-dev", is_flag=True, default=False, help="Configure django service for development")
-@click.option("--go-dev", is_flag=True, default=False, help="Configure go service for development")
-@click.option('--accounts', is_flag=True, default=False, help="Include web app for users registration.")
-@click.option('--server-name', help="Server name used in nginx configuration.")
-def compose(compose_name, profile, db, django_dev, go_dev, accounts, server_name):
-    """Generate docker compose configuration by entered options"""
 
     context = {
-        "output_dir": "",
+        "output_dir": name,
         "template_dir": os.path.join(BASE_DIR, "template"),
-        "server_name": server_name
+        "server_url": server_url,
+        "accounts": accounts,
+        "cadvisor": cadvisor,
+        "node_exporter": node_exporter
     }
+
+    if dev_server:
+        context["server_src"] = click.prompt("Enter location of server's source code", type=click.Path(exists=True, resolve_path=True))
+
+    click.secho("Creating a new deployment environment in directory: %s" % name, fg="cyan")
+    os.mkdir(name)
+
+    create_env_file(os.path.join(name, ".env"), {
+        "SECRET_KEY": get_random_string(),
+        "SERVER_URL": server_url
+    })
+    click.secho('Created ".env" file for the global settings', fg="yellow")
+
+    create_env_file(os.path.join(name, "postgres.env"), {
+        "POSTGRES_DB": "gisquick",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": get_random_string(8)
+    })
+    click.secho('Created "postgres.env" file for the main database settings', fg="yellow")
+
+    if not os.path.isabs(publish_dir):
+        publish_dir = os.path.join(name, publish_dir)
+    if not os.path.exists(publish_dir):
+        os.makedirs(publish_dir)
+        os.chown(publish_dir, 1000, 1000)
+        click.secho('Created directory for published projects', fg="yellow")
+
+
+    template_dir = os.path.join(BASE_DIR, "template")
+    conf_dirs = ["qgis", "migrations", "redis", "loki", "promtail", "prometheus"]
+    for folder in conf_dirs:
+        dest = os.path.join(name, folder)
+        if not os.path.exists(dest):
+            src = os.path.join(template_dir, folder)
+            shutil.copytree(src, dest)
+
 
     compose_filename = os.path.join(context["template_dir"], "docker-compose.yml")
     with open(compose_filename) as file:
@@ -311,34 +289,27 @@ def compose(compose_name, profile, db, django_dev, go_dev, accounts, server_name
 
 
     click.secho("Generating docker compose configuration...", fg="cyan")
-    click.secho("profile: %s" % profile, fg="yellow")
-    click.secho("db: %s" % db, fg="yellow")
-    click.secho("accounts extension: %s" % ("Yes" if accounts else "No"), fg="yellow")
+    # click.secho("accounts extension: %s" % ("Yes" if accounts else "No"), fg="yellow")
 
-    if profile == "local":
-        local_profile(config, context)
-        nginx_local(config, context)
-    else:
-        letsencrypt_profile(config, context)
+    caddy_config(config, context)
+    prometheus_config(config, context)
 
-    if db == "sqlite":
-        sqlite_config(config, context)
-    else:
-        postgres_config(config, context)
+    app_server_config(config, context)
+    if dev_server:
+        server_dev_config(config, context)
 
-    if django_dev:
-        django_dev_config(config, context)
-
-    if go_dev:
-        go_dev_config(config, context)
-
+    # remove disabled services
+    services = config["services"]
+    if not context["cadvisor"]:
+        services.pop("cadvisor")
+    if not context["node_exporter"]:
+        services.pop("node-exporter")
     if not accounts:
-        no_accounts(config, context)
+        services.pop("web-accounts")
 
     # Adjust final config for pretty output
 
     # Sort keys in services
-    services = config["services"]
     for service_name, service in services.items():
         # data = CommentedMap()
         data = {}
@@ -353,22 +324,12 @@ def compose(compose_name, profile, db, django_dev, go_dev, accounts, server_name
             add_ending_newline(service)
 
 
-    suffix_name = profile
-    if django_dev or go_dev:
-        suffix_name += ".dev"
-    dest_file = "docker-compose.%s.yml" % (compose_name or suffix_name)
-    with open(dest_file, "w") as file:
-        file.write("# Generated with: gisquick-cli %s\n\n" % " ".join(sys.argv[1:]))
+    compose_file = os.path.join(name, "docker-compose.yml")
+    with open(compose_file, "w") as file:
+        file.write("# Generated with: gisquick-cli\n\n")
         yaml.dump(config, file)
 
-    click.secho("Docker Compose file saved as: %s" % dest_file, fg="cyan")
-
-
-    django_conf_dir = os.path.join(context["output_dir"], "django")
-    if not os.path.exists(django_conf_dir):
-        src = os.path.join(context["template_dir"], "django")
-        click.secho("Generating Django configuration: %s" % django_conf_dir, fg="cyan")
-        shutil.copytree(src, django_conf_dir)
+    click.secho("Docker Compose file saved", fg="cyan")
 
 
 @cli.command()
@@ -378,6 +339,47 @@ def use(compose_filename):
     if not os.path.exists(compose_filename):
         fatal("Compose file does not exists: %s" % compose_filename)
     create_symlink(compose_filename, "docker-compose.yml")
+
+
+@cli.command()
+@click.argument("args", nargs=-1)
+@click.option("--source", help="Location of the migrations (driver://url)")
+@click.option("--path", default="./migrations", help="Shorthand for --source=file://path", type=click.Path(exists=True))
+def migrate(args, source, path):
+    docker = ["docker", "run", "--rm"]
+    migrate = []
+
+    network = "%s_default" % os.path.basename(os.getcwd())
+    docker.extend(["--network", network])
+
+    if source:
+        migrate.extend(["-source", source])
+    else:
+        docker.extend(["-v", "%s:/migrations" % os.path.abspath(path)])
+        migrate.extend(["-path", "/migrations/"])
+
+    docker.append("migrate/migrate")
+
+    import subprocess
+    from dotenv import dotenv_values
+    config = dotenv_values("postgres.env")
+
+    # with open("postgres.env", "r") as fh:
+    #     config = dict(
+    #         tuple(line.replace("\n", "").split("="))
+    #         for line in fh.readlines() if not line.startswith("#")
+    #     )
+
+    db = "postgres://postgres:{0}@postgres:5432/gisquick?sslmode=disable".format(quote(config["POSTGRES_PASSWORD"]))
+
+    migrate.extend(["-database", db])
+    migrate.extend(args)
+
+    # docker run --rm -v `pwd`/migrations:/migrations --network gisquick_default migrate/migrate -path=/migrations/ -database "postgres://postgres:Xo7neeVo@postgres:5432/gisquick?sslmode=disable" up
+    parts = [*docker, *migrate]
+    # print(" ".join(parts))
+    out = subprocess.run(parts)
+    print("The exit code was: %d" % out.returncode)
 
 
 if __name__ == "__main__":
