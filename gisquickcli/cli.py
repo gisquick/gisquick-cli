@@ -265,7 +265,11 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
         publish_dir = os.path.join(name, publish_dir)
     if not os.path.exists(publish_dir):
         os.makedirs(publish_dir)
-        os.chown(publish_dir, 1000, 1000)
+        try:
+            os.chown(publish_dir, 1000, 1000)
+        except Exception as e:
+            click.secho('Failed to set owner of publish directory: %s' % e, fg="red")
+
         click.secho('Created directory for published projects', fg="yellow")
 
 
