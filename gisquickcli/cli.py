@@ -4,6 +4,7 @@ import os
 import sys
 import click
 import shutil
+import string
 import secrets
 from urllib.parse import urlsplit, quote
 from ruamel.yaml import YAML
@@ -54,9 +55,10 @@ def add_ending_newline(obj):
         obj.ca.items[last_key] = [None, None, ct, None]
 
 
-# def get_random_string(length=50, chars="!@#%^&*(-_=+)"):
-def get_random_string(length=50, chars="abcdefghijklmnopqrstuvwxyz0123456789!@#%^&*(-_=+)"):
-    return "".join(secrets.choice(chars) for i in range(length))
+def generate_password(length):
+    chars = string.ascii_letters + string.digits + string.punctuation
+    safe_char = secrets.choice(string.ascii_letters + string.digits)
+    return safe_char + "".join(secrets.choice(chars) for i in range(length - 1))
 
 
 def create_env_file(path, vars, overwrite=False):
@@ -249,7 +251,7 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
     os.mkdir(name)
 
     create_env_file(os.path.join(name, ".env"), {
-        "SECRET_KEY": get_random_string(),
+        "SECRET_KEY": generate_password(50),
         "SERVER_URL": server_url
     })
     click.secho('Created ".env" file for the global settings', fg="yellow")
@@ -257,7 +259,7 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
     create_env_file(os.path.join(name, "postgres.env"), {
         "POSTGRES_DB": "gisquick",
         "POSTGRES_USER": "postgres",
-        "POSTGRES_PASSWORD": get_random_string(8)
+        "POSTGRES_PASSWORD": secrets.token_urlsafe(10)
     })
     click.secho('Created "postgres.env" file for the main database settings', fg="yellow")
 
@@ -383,7 +385,8 @@ def migrate(args, source, path):
     parts = [*docker, *migrate]
     # print(" ".join(parts))
     out = subprocess.run(parts)
-    print("The exit code was: %d" % out.returncode)
+    if out.returncode != 0:
+        click.secho("Error: exit code: %d" % out.returncode, fg="red")
 
 
 if __name__ == "__main__":
