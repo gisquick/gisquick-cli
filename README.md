@@ -41,6 +41,11 @@ For development, install from source code
 python3 -m pip install -e <path-to-gisquick-cli>
 ```
 
+### Check installed version
+```
+python3 -m pip show gisquick-cli | grep Version
+```
+
 ## Setup deployment
 
 Generate configuration for Gisquick deployment
@@ -61,9 +66,7 @@ docker run --rm gisquick/server gisquick serve --help
 First start and initialization of the database
 ```
 cd <name>
-
 docker compose up -d
-
 gisquick-cli migrate up
 
 ```
