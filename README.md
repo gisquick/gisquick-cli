@@ -91,7 +91,11 @@ docker compose exec app gisquick --help
 Logs and monitoring data are accessible in Grafana web interface, available at `/admin/grafana` endpoint.
 Initial user account is admin/admin (username/password)
 
-TODO: setup of data sources
+### Setup of data sources
+
+In `Configuration > Data sources` settings, add:
+* Loki (http://loki:3100)
+* Prometheus (http://prometheus:9090)
 
 
 ## Deployment for server development
@@ -116,6 +120,17 @@ Project size limit is defined by `GISQUICK_MAX_PROJECT_SIZE` environment variabl
 
 
 
+## Update
+
+In most cases you can update Gisquick by fetching newer Docker images and recreating its containers
+
+To update Gisquick services (server application and web applications), run
+```
+docker compose pull app web-map web-settings
+docker compose up -d app web-map web-user
+```
+
+
 ## Useful commands
 
 Generate new secret key
@@ -127,12 +142,6 @@ Reload Caddy server
 ```
 docker compose kill -s HUP caddy
 ```
-
-Update web app
-```
-docker compose up -d web-map
-```
-Note: use ```--force-recreate``` flag to update assets even if image didn't change
 
 
 ## Gisquick running behind gateway server
