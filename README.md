@@ -126,7 +126,7 @@ In most cases you can update Gisquick by fetching newer Docker images and recrea
 
 To update Gisquick services (server application and web applications), run
 ```
-docker compose pull app web-map web-settings
+docker compose pull app web-map web-user
 docker compose up -d app web-map web-user
 ```
 
