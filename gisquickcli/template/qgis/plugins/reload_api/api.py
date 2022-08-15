@@ -27,13 +27,13 @@ class ReloadApiHandler(QgsServerOgcApiHandler):
         return "ReloadApi"
 
     def summary(self):
-        return "TODO: summary"
+        return "Removes project entry from config cache"
 
     def description(self):
-        return "TODO: description"
+        return "Removes project entry from config cache"
 
     def linkTitle(self):
-        return "TODO: linkTitle"
+        return "Projects config cache reloader"
 
     def linkType(self):
         return QgsServerOgcApi.data
@@ -42,7 +42,7 @@ class ReloadApiHandler(QgsServerOgcApiHandler):
         """ """
 
         values = self.values(context)
-        project = values['project']
+        project = values['MAP']
         self.serverIface.removeConfigCacheEntry(project)
         data = {
             "project": project
@@ -50,7 +50,7 @@ class ReloadApiHandler(QgsServerOgcApiHandler):
         self.write(data, context)
 
     def parameters(self, context):
-        return [QgsServerQueryStringParameter('project', True, QgsServerQueryStringParameter.Type.String, 'Project')]
+        return [QgsServerQueryStringParameter('MAP', True, QgsServerQueryStringParameter.Type.String, 'Project path')]
 
 
 class ReloadApi():

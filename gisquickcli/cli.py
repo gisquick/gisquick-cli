@@ -389,6 +389,17 @@ def migrate(args, source, path):
         click.secho("Error: exit code: %d" % out.returncode, fg="red")
 
 
+@cli.command()
+def update_qgis_plugins():
+    """Update QGIS plugins"""
+    template_dir = os.path.join(BASE_DIR, "template")
+    dest = "qgis"
+    if os.path.exists(dest):
+        shutil.rmtree(dest)
+    src = os.path.join(template_dir, "qgis")
+    shutil.copytree(src, dest)
+
+
 if __name__ == "__main__":
     try:
         cli()
