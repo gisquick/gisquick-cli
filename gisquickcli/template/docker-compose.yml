@@ -168,7 +168,7 @@ services:
     logging: *default-logging
 
   loki:
-    image: grafana/loki:2.4.1
+    image: grafana/loki:2.6.1
     restart: always
     volumes:
       - ./loki/loki-config.yaml:/etc/loki/config.yaml
@@ -179,7 +179,7 @@ services:
     logging: *default-logging
 
   promtail:
-    image: grafana/promtail:2.4.1
+    image: grafana/promtail:2.6.1
     restart: always
     volumes:
       # - /var/log:/var/log
