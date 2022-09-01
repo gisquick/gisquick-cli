@@ -10,7 +10,6 @@
 }
 
 ${SERVER_NAME} {
-  redir /user /user/
   redir /admin/grafana /admin/grafana/
 
   route /admin/grafana/* {
@@ -36,26 +35,15 @@ ${SERVER_NAME} {
     }
   }
 
-
-  root /map/static/* /var/www/html/
-  root / /var/www/html/map/  # matcher token: /index.html
-
-  #root /user/static/* /var/www/html/
-
-  route /user/static/* {
-    root * /var/www/html/
-    file_server {
-      precompressed gzip
-    }
+  @user {
+    path /user /user/*
+    not path /user/static/*
   }
 
-  route /user/* {
-    rewrite * /user/index.html
-    root * /var/www/html/
-    file_server {
-      precompressed gzip
-    }
-  }
+  rewrite / /map/
+  rewrite @user /user/
+
+  root * /var/www/html/
   file_server {
     precompressed gzip
   }
