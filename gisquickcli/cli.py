@@ -370,13 +370,12 @@ def migrate(args, source, path):
     from dotenv import dotenv_values
     config = dotenv_values("postgres.env")
 
-    # with open("postgres.env", "r") as fh:
-    #     config = dict(
-    #         tuple(line.replace("\n", "").split("="))
-    #         for line in fh.readlines() if not line.startswith("#")
-    #     )
-
-    db = "postgres://postgres:{0}@postgres:5432/gisquick?sslmode=disable".format(quote(config["POSTGRES_PASSWORD"]))
+    db = "postgres://{user}:{password}@{host}/{dbname}?sslmode=disable".format(
+        user=config["POSTGRES_USER"],
+        password=quote(config["POSTGRES_PASSWORD"]),
+        host=config.get("POSTGRES_HOST", "postgres:5432"),
+        dbname=config["POSTGRES_DB"]
+    )
 
     migrate.extend(["-database", db])
     migrate.extend(args)
