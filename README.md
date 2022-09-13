@@ -112,14 +112,6 @@ After you made changes in source files, restart service to recompile:
 docker-compose restart app
 ```
 
-## Notes
-
-### Define project size limit
-
-Project size limit is defined by `GISQUICK_MAX_PROJECT_SIZE` environment variable in `docker-compose.yml`
-
-
-
 ## Update
 
 In most cases you can update Gisquick by fetching newer Docker images and recreating its containers
