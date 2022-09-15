@@ -21,7 +21,7 @@ services:
       - QGIS_SERVER_IGNORE_BAD_LAYERS=1
       - QGIS_SERVER_LOG_LEVEL=0
       - QGIS_PLUGINPATH=/usr/lib/qgis/python/plugins/
-      # - QGIS_SERVER_PARALLEL_RENDERING=true
+      - QGIS_SERVER_PARALLEL_RENDERING=true
     expose:
       - 5555
     logging: *default-logging
@@ -58,9 +58,7 @@ services:
       - media:/var/www/media/
     environment:
       - GISQUICK_PROJECTS_ROOT=/publish
-      - GISQUICK_MAP_CACHE_ROOT=/var/www/media/cache
       - GISQUICK_MAPSERVER_URL=http://caddy:10080/qgis-server
-      - GISQUICK_MAX_PROJECT_SIZE=250M
       - GISQUICK_LANGUAGE=en-us
       - GISQUICK_SIGNUP_API=False
       - REDIS_ADDR=redis:6379
