@@ -43,6 +43,7 @@ ${SERVER_NAME} {
   rewrite / /map/
   rewrite @user /user/
 
+  root /media/* /var/www/
   root * /var/www/html/
   file_server {
     precompressed gzip

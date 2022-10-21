@@ -223,6 +223,11 @@ volumes:
   redisdata:
   assets:
   media:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/data/media/
+      o: bind
   prometheus_data:
   grafana-data:
   loki:
