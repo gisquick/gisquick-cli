@@ -377,11 +377,13 @@ def migrate(args, source, path):
     from dotenv import dotenv_values
     config = dotenv_values("postgres.env")
 
-    db = "postgres://{user}:{password}@{host}/{dbname}?sslmode=disable".format(
+    sslmode = config.get("POSTGRES_SSL_MODE", "prefer")
+    db = "postgres://{user}:{password}@{host}/{dbname}?sslmode={sslmode}".format(
         user=config["POSTGRES_USER"],
         password=quote(config["POSTGRES_PASSWORD"]),
         host=config.get("POSTGRES_HOST", "postgres:5432"),
-        dbname=config["POSTGRES_DB"]
+        dbname=config["POSTGRES_DB"],
+        sslmode=sslmode
     )
 
     migrate.extend(["-database", db])
