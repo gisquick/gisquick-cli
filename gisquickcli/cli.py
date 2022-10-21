@@ -313,6 +313,13 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
     if not accounts:
         services.pop("web-accounts")
 
+    volumes = config["volumes"]
+    publish_volume_opts = volumes["publish"]["driver_opts"]
+    if os.path.isabs(publish_dir):
+        publish_volume_opts["device"] = publish_dir
+    else:
+        publish_volume_opts["device"] = os.path.join("{PWD}", publish_dir)
+
     # Adjust final config for pretty output
 
     # Sort keys in services
