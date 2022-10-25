@@ -267,16 +267,19 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
     })
     click.secho('Created "postgres.env" file for the main database settings', fg="yellow")
 
-    if not os.path.isabs(publish_dir):
-        publish_dir = os.path.join(name, publish_dir)
-    if not os.path.exists(publish_dir):
-        os.makedirs(publish_dir)
+    publish_dir_path = publish_dir if os.path.isabs(publish_dir) else os.path.join(name, publish_dir)
+    if not os.path.exists(publish_dir_path):
+        os.makedirs(publish_dir_path)
         try:
-            os.chown(publish_dir, 1000, 1000)
+            os.chown(publish_dir_path, 1000, 1000)
         except Exception as e:
             click.secho('Failed to set owner of publish directory: %s' % e, fg="red")
 
         click.secho('Created directory for published projects', fg="yellow")
+
+    # create media folder
+    os.makedirs(os.path.join(name, 'data', 'media'))
+    click.secho('Created directory for public media folder (data/media)', fg="yellow")
 
 
     template_dir = os.path.join(BASE_DIR, "template")

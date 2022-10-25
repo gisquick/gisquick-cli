@@ -55,7 +55,6 @@ services:
       - redis
     volumes:
       - publish:/publish/
-      - media:/var/www/media/
     environment:
       - GISQUICK_PROJECTS_ROOT=/publish
       - GISQUICK_MAPSERVER_URL=http://caddy:10080/qgis-server
@@ -99,7 +98,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
       - assets:/var/www/html/
-      - media:/var/www/media/
+      - ./data/media:/var/www/media/
     ports:
       - 2019
       - 10080
@@ -222,12 +221,6 @@ volumes:
   db-data:
   redisdata:
   assets:
-  media:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${PWD}/data/media/
-      o: bind
   prometheus_data:
   grafana-data:
   loki:
