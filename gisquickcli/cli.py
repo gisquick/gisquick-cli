@@ -263,7 +263,8 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
     create_env_file(os.path.join(name, "postgres.env"), {
         "POSTGRES_DB": "gisquick",
         "POSTGRES_USER": "postgres",
-        "POSTGRES_PASSWORD": secrets.token_urlsafe(10)
+        "POSTGRES_PASSWORD": secrets.token_urlsafe(10),
+        "POSTGRES_SSL_MODE": "disable"
     })
     click.secho('Created "postgres.env" file for the main database settings', fg="yellow")
 
@@ -366,7 +367,7 @@ def use(compose_filename):
 @click.option("--source", help="Location of the migrations (driver://url)")
 @click.option("--path", default="./migrations", help="Shorthand for --source=file://path", type=click.Path(exists=True))
 def migrate(args, source, path):
-    docker = ["docker", "run", "--rm"]
+    docker = ["docker", "run", "--rm", "-it"]
     migrate = []
 
     network = "%s_default" % os.path.basename(os.getcwd())
@@ -385,7 +386,8 @@ def migrate(args, source, path):
     config = dotenv_values("postgres.env")
 
     sslmode = config.get("POSTGRES_SSL_MODE", "prefer")
-    db = "postgres://{user}:{password}@{host}/{dbname}?sslmode={sslmode}".format(
+    # use pgx driver to support 'prefer' ssl mode
+    db = "pgx://{user}:{password}@{host}/{dbname}?sslmode={sslmode}".format(
         user=config["POSTGRES_USER"],
         password=quote(config["POSTGRES_PASSWORD"]),
         host=config.get("POSTGRES_HOST", "postgres:5432"),
