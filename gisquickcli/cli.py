@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import sys
 import click
 import shutil
@@ -60,6 +61,9 @@ def generate_password(length):
     safe_char = secrets.choice(string.ascii_letters + string.digits)
     return safe_char + "".join(secrets.choice(chars) for i in range(length - 1))
 
+def quote_string(val):
+    escaped = re.sub("[^\\\]'", lambda m: m.group(0)[0] + "\\'", val)
+    return "'" + escaped + "'"
 
 def create_env_file(path, vars, overwrite=False):
     if not os.path.exists(path) or overwrite:
@@ -251,7 +255,7 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
     os.mkdir(name)
 
     create_env_file(os.path.join(name, ".env"), {
-        "SECRET_KEY": generate_password(50),
+        "SECRET_KEY": quote_string(generate_password(50)),
         "SERVER_URL": server_url
     })
     click.secho('Created ".env" file for the global settings', fg="yellow")
