@@ -196,6 +196,8 @@ services:
     environment:
       - GF_SERVER_ROOT_URL=${SERVER_URL}/admin/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_USERS_VIEWERS_CAN_EDIT=true
     logging: *default-logging
     # logging:
     #   driver: loki

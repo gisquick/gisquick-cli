@@ -13,6 +13,9 @@ ${SERVER_NAME} {
   redir /admin/grafana /admin/grafana/
 
   route /admin/grafana/* {
+    forward_auth app:3000 {
+      uri /api/auth/is_superuser
+    }
     reverse_proxy grafana:3000
   }
 
