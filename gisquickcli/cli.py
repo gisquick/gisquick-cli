@@ -326,7 +326,7 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
     if os.path.isabs(publish_dir):
         publish_volume_opts["device"] = publish_dir
     else:
-        publish_volume_opts["device"] = os.path.join("{PWD}", publish_dir)
+        publish_volume_opts["device"] = os.path.join("${PWD}", publish_dir)
 
     # Adjust final config for pretty output
 
