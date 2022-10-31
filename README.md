@@ -67,19 +67,23 @@ First start and initialization of the database
 ```
 cd <name>
 docker compose up -d
-gisquick-cli migrate up
-
+docker compose exec app gisquick migrate up
 ```
 
-## Create user/superuser account
+Note: `gisquick migrate` command is tiny wrapper for https://github.com/golang-migrate/migrate tool.
+
+
+## Create superuser/user account
 ```
-docker compose exec app sh
-gisquick adduser
+docker compose exec gisquick addsuperuser
 ```
 or
 ```
-gisquick addsuperuser
+docker compose exec gisquick adduser
 ```
+
+Superuser can manage other accounts also from admin web interface at `/admin/` url.
+
 
 To see all Gisquick commands, run
 ```
@@ -109,7 +113,7 @@ gisquick-cli create --dev-server gisquick
 
 After you made changes in source files, restart service to recompile:
 ```
-docker-compose restart app
+docker compose restart app
 ```
 
 ## Update
@@ -118,8 +122,8 @@ In most cases you can update Gisquick by fetching newer Docker images and recrea
 
 To update Gisquick services (server application and web applications), run
 ```
-docker compose pull app web-map web-user
-docker compose up -d app web-map web-user
+docker compose pull app web-map web-settings
+docker compose up -d app web-map web-settings
 ```
 
 

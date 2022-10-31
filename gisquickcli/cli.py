@@ -367,6 +367,7 @@ def use(compose_filename):
 @click.option("--source", help="Location of the migrations (driver://url)")
 @click.option("--path", default="./migrations", help="Shorthand for --source=file://path", type=click.Path(exists=True))
 def migrate(args, source, path):
+    """wrapper for https://github.com/golang-migrate/migrate tool."""
     docker = ["docker", "run", "--rm", "-it"]
     migrate = []
 
