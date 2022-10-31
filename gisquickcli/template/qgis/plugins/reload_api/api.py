@@ -20,8 +20,9 @@ class ReloadApiHandler(QgsServerOgcApiHandler):
         self.serverIface = serverIface
         self.setContentTypes([QgsServerOgcApi.JSON])
 
-    def path(self):
-        return QRegularExpression("/reload")
+    # def path(self):
+    #     return QRegularExpression("/reload") # not working in/since 3.22
+    #     return QRegularExpression("/") # works in 3.16 and 3.22
 
     def operationId(self):
         return "ReloadApi"

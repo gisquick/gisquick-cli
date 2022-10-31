@@ -12,7 +12,7 @@ services:
 
   qgis-server:
     restart: always
-    image: gisquick/qgis-server:3.16-debian
+    image: gisquick/qgis-server:3.22
     mem_limit: 3000M
     volumes:
       - publish:/publish/
