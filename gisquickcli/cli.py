@@ -284,7 +284,7 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
 
 
     template_dir = os.path.join(BASE_DIR, "template")
-    conf_dirs = ["qgis", "migrations", "redis", "loki", "promtail", "prometheus"]
+    conf_dirs = ["qgis", "redis", "loki", "promtail", "prometheus"]
     for folder in conf_dirs:
         dest = os.path.join(name, folder)
         if not os.path.exists(dest):
