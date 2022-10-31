@@ -38,14 +38,21 @@ ${SERVER_NAME} {
     }
   }
 
+  rewrite / /map/
+
+  # client side routing
   @user {
     path /user /user/*
     not path /user/static/*
   }
-
-  rewrite / /map/
+  @admin-page {
+    path /admin /admin/*
+    not path /admin/grafana*
+  }
   rewrite @user /user/
+  rewrite @admin-page /admin/
 
+  # static files
   root /media/* /var/www/
   root * /var/www/html/
   file_server {

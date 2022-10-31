@@ -75,13 +75,11 @@ services:
     image: gisquick/web-map
     volumes:
       - assets:/assets/
-    command: "copy-assets /var/www /assets/map"
 
-  web-user:
+  web-settings:
     image: gisquick/web-settings
     volumes:
       - assets:/assets/
-    command: "copy-assets /var/www /assets/user"
 
   web-accounts:
     image: gisquick/web-accounts
