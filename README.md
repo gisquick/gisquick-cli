@@ -75,11 +75,11 @@ Note: `gisquick migrate` command is tiny wrapper for https://github.com/golang-m
 
 ## Create superuser/user account
 ```
-docker compose exec gisquick addsuperuser
+docker compose exec app gisquick addsuperuser
 ```
 or
 ```
-docker compose exec gisquick adduser
+docker compose exec app gisquick adduser
 ```
 
 Superuser can manage other accounts also from admin web interface at `/admin/` url.
