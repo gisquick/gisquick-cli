@@ -163,7 +163,7 @@ def caddy_config(config, context):
     if serv_url.hostname == "localhost":
         server_name = ":%s" % (serv_url.port or 80)
     if serv_url.port:
-        ports = [port]
+        ports = [serv_url.port]
     elif serv_url.scheme == "http":
         ports = [80]
     else:
