@@ -38,7 +38,11 @@ ${SERVER_NAME} {
     }
   }
 
-  rewrite / /map/
+  # map
+  @mainapp {
+    path / /index.html /manifest.json /service-worker.js /workbox* /map/*
+  }
+  root @mainapp /var/www/html/map/
 
   # client side routing
   @user {

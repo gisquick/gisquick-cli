@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='gisquick-cli',
-    version='0.3',
+    version='0.4',
     description='',
     author='Marcel Dancak',
     author_email='dancakm@gmail.com',

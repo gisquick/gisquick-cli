@@ -73,6 +73,10 @@ docker compose exec app gisquick migrate up
 Note: `gisquick migrate` command is tiny wrapper for https://github.com/golang-migrate/migrate tool.
 
 
+### Progressive Web App version
+For map application with PWA support, change Docker image of the **web-map** service in `docker-compose.yml` to `gisquick/web-map:pwa`
+
+
 ## Create superuser/user account
 ```
 docker compose exec app gisquick addsuperuser
