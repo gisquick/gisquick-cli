@@ -40,7 +40,7 @@ ${SERVER_NAME} {
 
   # map
   @mainapp {
-    path / /index.html /manifest.json /service-worker.js /workbox* /map/*
+    path / /index.html /favicon.ico /manifest.json /service-worker.js /workbox* /map/*
   }
   root @mainapp /var/www/html/map/
 

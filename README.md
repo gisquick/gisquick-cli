@@ -36,6 +36,9 @@ Set of commands to simplify and speed up setup of new deployment(s).
 python3 -m pip install  https://github.com/gisquick/gisquick-cli/archive/master.zip
 ```
 
+Depending on your environment, you may need to run this command with root privileges.
+
+
 For development, install from source code
 ```
 python3 -m pip install -e <path-to-gisquick-cli>
