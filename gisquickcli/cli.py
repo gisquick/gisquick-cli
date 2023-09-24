@@ -170,7 +170,7 @@ def caddy_config(config, context):
         ports = [80, 443]
 
     if serv_url.scheme == "https" and serv_url.port:
-        click.secho("When using non-standard port with https scheme, you will need to configure ssl certificates", fg="orange")
+        click.secho("When using non-standard port with https scheme, you will need to configure ssl certificates", fg="yellow")
 
     service = config["services"]["caddy"]
     for port in ports:
