@@ -21,10 +21,46 @@ yaml.default_flow_style = False
 BASE_DIR = os.path.dirname(__file__)
 service_keys_order = ["restart", "image", "volumes", "environment", "env_file", "expose", "ports", "logging", "command"]
 
+PROCESSING_PLUGIN_TARBALL_URL = (
+    "https://github.com/gisquick/gisquick-qgis-server-processing-plugin"
+    "/archive/refs/heads/main.tar.gz"
+)
+
 
 def fatal(msg):
     click.secho(msg, fg="red", err=True)
     sys.exit(1)
+
+
+def fetch_processing_plugin(plugins_dir):
+    import urllib.request
+    import tarfile
+    import tempfile
+
+    dest = os.path.join(plugins_dir, "create_project")
+    click.echo("Fetching processing plugin from GitHub...")
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+            tmp_path = tmp.name
+        with urllib.request.urlopen(PROCESSING_PLUGIN_TARBALL_URL) as resp:
+            if resp.status != 200:
+                raise RuntimeError("HTTP %d" % resp.status)
+            with open(tmp_path, "wb") as f:
+                f.write(resp.read())
+        with tarfile.open(tmp_path, "r:gz") as tar:
+            members = tar.getmembers()
+            prefix = members[0].name.split("/")[0] + "/"
+            for member in members:
+                if member.name.startswith(prefix) and member.name != prefix:
+                    member.name = member.name[len(prefix):]
+                    tar.extract(member, dest)
+        click.secho("Processing plugin fetched successfully", fg="yellow")
+    except Exception as e:
+        fatal("Failed to fetch processing plugin: %s" % e)
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 # https://stackoverflow.com/questions/42172399/modifying-yaml-using-ruamel-yaml-adds-extra-new-lines
@@ -256,7 +292,8 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
 
     create_env_file(os.path.join(name, ".env"), {
         "SECRET_KEY": quote_string(generate_password(50)),
-        "SERVER_URL": server_url
+        "SERVER_URL": server_url,
+        "PROCESSING_SECRET": secrets.token_urlsafe(32)
     })
     click.secho('Created ".env" file for the global settings', fg="yellow")
 
@@ -291,6 +328,7 @@ def create(name, server_url, publish_dir, cadvisor, node_exporter, accounts, dev
             src = os.path.join(template_dir, folder)
             shutil.copytree(src, dest)
 
+    fetch_processing_plugin(os.path.join(name, "qgis", "plugins"))
 
     compose_filename = os.path.join(context["template_dir"], "docker-compose.yml")
     with open(compose_filename) as file:
@@ -416,6 +454,7 @@ def update_qgis_plugins():
         shutil.rmtree(dest)
     src = os.path.join(template_dir, "qgis")
     shutil.copytree(src, dest)
+    fetch_processing_plugin(os.path.join(dest, "plugins"))
 
 
 if __name__ == "__main__":

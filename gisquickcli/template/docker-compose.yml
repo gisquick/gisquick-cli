@@ -22,6 +22,7 @@ services:
       - QGIS_SERVER_LOG_LEVEL=0
       - QGIS_PLUGINPATH=/usr/lib/qgis/python/plugins/
       - QGIS_SERVER_PARALLEL_RENDERING=true
+      - GISQUICK_QGIS_SERVER_PROCESSING_SHARED_SECRET=${PROCESSING_SECRET}
     expose:
       - 5555
     logging: *default-logging
@@ -64,6 +65,7 @@ services:
       - AUTH_SESSION_EXPIRATION=96h
       - AUTH_SECRET_KEY=${SECRET_KEY}
       - WEB_SITE_URL=${SERVER_URL}
+      - PROCESSING_SECRET=${PROCESSING_SECRET}
     env_file:
       - postgres.env
     ports:
