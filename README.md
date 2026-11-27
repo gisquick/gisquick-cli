@@ -112,7 +112,6 @@ docker compose exec app gisquick migrate up
 docker compose exec app gisquick adduser
 ```
 
-
 ## Logs and monitoring
 
 Logs and monitoring data are accessible in Grafana web interface, available at `/admin/grafana` endpoint.
