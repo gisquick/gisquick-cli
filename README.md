@@ -93,6 +93,11 @@ docker compose exec app gisquick adduser
 
 Superuser can manage other accounts also from admin web interface at `/admin/` url.
 
+To see all Gisquick commands, run
+```
+docker compose exec app gisquick --help
+```
+
 ### Troubleshooting: `column "profile" of relation "users" does not exist`
 
 If `gisquick adduser` (or `addsuperuser`) fails with
@@ -107,11 +112,6 @@ docker compose exec app gisquick migrate up
 docker compose exec app gisquick adduser
 ```
 
-
-To see all Gisquick commands, run
-```
-docker compose exec app gisquick --help
-```
 
 ## Logs and monitoring
 
